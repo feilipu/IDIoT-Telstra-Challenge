@@ -50,12 +50,12 @@ extern "C" {
 /*--------------------------------------------------*/
 
 typedef struct __attribute__ ((packed)) _filter_t {
-	uint16_t sample_rate;	// sample rate in Hz
-	uint16_t cutoff;	// normalised cutoff frequency, 0-65536. maximum is sample_rate/2
-	uint16_t peak;		// normalised Q factor, 0-65536. maximum is Q_MAXIMUM
-	int16_t b0,b1,b2,a1,a2; // Coefficients in 8.8 format
-    int16_t xn_1, xn_2;	//IIR state variables
-    int16_t yn_1, yn_2; //IIR state variables
+  uint16_t sample_rate;	// sample rate in Hz
+  uint16_t cutoff;	// normalised cutoff frequency, 0-65536. maximum is sample_rate/2
+  uint16_t peak;		// normalised Q factor, 0-65536. maximum is Q_MAXIMUM
+  int16_t b0, b1, b2, a1, a2; // Coefficients in 8.8 format
+  int16_t xn_1, xn_2;	//IIR state variables
+  int16_t yn_1, yn_2; //IIR state variables
 } filter_t;
 
 
@@ -99,83 +99,83 @@ void IIRFilter( filter_t *filter, int16_t * xn ) __attribute__ ((hot, flatten));
 
 void setIIRFilterLPF( filter_t *filter ) // Low Pass Filter Setting
 {
-	if ( !(filter->sample_rate) )
-		filter->sample_rate = SAMPLE_RATE;
+  if ( !(filter->sample_rate) )
+    filter->sample_rate = SAMPLE_RATE;
 
-	if ( !(filter->cutoff) )
-		filter->cutoff = UINT16_MAX >> 1; // 1/4 of sample rate = filter->sample_rate>>2
+  if ( !(filter->cutoff) )
+    filter->cutoff = UINT16_MAX >> 1; // 1/4 of sample rate = filter->sample_rate>>2
 
-	if ( !(filter->peak) )
-		filter->peak =  (uint16_t)(M_SQRT1_2 * UINT16_MAX / Q_MAXIMUM); // 1/sqrt(2) effectively
+  if ( !(filter->peak) )
+    filter->peak =  (uint16_t)(M_SQRT1_2 * UINT16_MAX / Q_MAXIMUM); // 1/sqrt(2) effectively
 
-	double frequency = ((double)filter->cutoff * (filter->sample_rate>>1)) / UINT16_MAX;
-	double q = (double)filter->peak * Q_MAXIMUM / UINT16_MAX;
-	double w0 = (2.0 * M_PI * frequency) / filter->sample_rate;
-	double sinW0 = sin(w0);
-	double cosW0 = cos(w0);
-	double alpha = sinW0 / (q * 2.0f);
-	double scale = IIRSCALEFACTOR / (1 + alpha); // a0 = 1 + alpha
+  double frequency = ((double)filter->cutoff * (filter->sample_rate >> 1)) / UINT16_MAX;
+  double q = (double)filter->peak * Q_MAXIMUM / UINT16_MAX;
+  double w0 = (2.0 * M_PI * frequency) / filter->sample_rate;
+  double sinW0 = sin(w0);
+  double cosW0 = cos(w0);
+  double alpha = sinW0 / (q * 2.0f);
+  double scale = IIRSCALEFACTOR / (1 + alpha); // a0 = 1 + alpha
 
-	filter->b0	= \
-	filter->b2	= float2int( ((1.0 - cosW0) / 2.0) * scale );
-	filter->b1	= float2int(  (1.0 - cosW0) * scale );
+  filter->b0	= \
+                filter->b2	= float2int( ((1.0 - cosW0) / 2.0) * scale );
+  filter->b1	= float2int(  (1.0 - cosW0) * scale );
 
-	filter->a1	= float2int( (-2.0 * cosW0) * scale );
-	filter->a2	= float2int( (1.0 - alpha) * scale );
+  filter->a1	= float2int( (-2.0 * cosW0) * scale );
+  filter->a2	= float2int( (1.0 - alpha) * scale );
 }
 
 void setIIRFilterHPF( filter_t *filter ) // High Pass Filter Setting
 {
-	if ( !(filter->sample_rate) )
-		filter->sample_rate = SAMPLE_RATE;
+  if ( !(filter->sample_rate) )
+    filter->sample_rate = SAMPLE_RATE;
 
-	if ( !(filter->cutoff) )
-		filter->cutoff = UINT16_MAX >> 1; // 1/4 of sample rate = filter->sample_rate>>2
+  if ( !(filter->cutoff) )
+    filter->cutoff = UINT16_MAX >> 1; // 1/4 of sample rate = filter->sample_rate>>2
 
-	if ( !(filter->peak) )
-		filter->peak =  (uint16_t)(M_SQRT1_2 * UINT16_MAX / Q_MAXIMUM); // 1/sqrt(2) effectively
+  if ( !(filter->peak) )
+    filter->peak =  (uint16_t)(M_SQRT1_2 * UINT16_MAX / Q_MAXIMUM); // 1/sqrt(2) effectively
 
-	double frequency = ((double)filter->cutoff * (filter->sample_rate>>1)) / UINT16_MAX;
-	double q = (double)filter->peak * Q_MAXIMUM / UINT16_MAX;
-	double w0 = (2.0 * M_PI * frequency) / filter->sample_rate;
-	double sinW0 = sin(w0);
-	double cosW0 = cos(w0);
-	double alpha = sinW0 / (q * 2.0f);
-	double scale = IIRSCALEFACTOR / (1 + alpha); // a0 = 1 + alpha
+  double frequency = ((double)filter->cutoff * (filter->sample_rate >> 1)) / UINT16_MAX;
+  double q = (double)filter->peak * Q_MAXIMUM / UINT16_MAX;
+  double w0 = (2.0 * M_PI * frequency) / filter->sample_rate;
+  double sinW0 = sin(w0);
+  double cosW0 = cos(w0);
+  double alpha = sinW0 / (q * 2.0f);
+  double scale = IIRSCALEFACTOR / (1 + alpha); // a0 = 1 + alpha
 
-	filter->b0	= float2int( ((1.0 + cosW0) / 2.0) * scale );
-	filter->b1	= float2int( -(1.0 + cosW0) * scale );
-	filter->b2	= float2int( ((1.0 + cosW0) / 2.0) * scale );
+  filter->b0	= float2int( ((1.0 + cosW0) / 2.0) * scale );
+  filter->b1	= float2int( -(1.0 + cosW0) * scale );
+  filter->b2	= float2int( ((1.0 + cosW0) / 2.0) * scale );
 
-	filter->a1	= float2int( (-2.0 * cosW0) * scale );
-	filter->a2	= float2int( (1.0 - alpha) * scale );
+  filter->a1	= float2int( (-2.0 * cosW0) * scale );
+  filter->a2	= float2int( (1.0 - alpha) * scale );
 }
 
 void setIIRFilterBPF( filter_t *filter ) // Band Pass Filter Setting
 {
-	if ( !(filter->sample_rate) )
-		filter->sample_rate = SAMPLE_RATE;
+  if ( !(filter->sample_rate) )
+    filter->sample_rate = SAMPLE_RATE;
 
-	if ( !(filter->cutoff) )
-		filter->cutoff = UINT16_MAX >> 1; // 1/4 of sample rate = filter->sample_rate>>2
+  if ( !(filter->cutoff) )
+    filter->cutoff = UINT16_MAX >> 1; // 1/4 of sample rate = filter->sample_rate>>2
 
-	if ( !(filter->peak) )
-		filter->peak =  (uint16_t)(M_SQRT1_2 * UINT16_MAX / Q_MAXIMUM); // 1/sqrt(2) effectively
+  if ( !(filter->peak) )
+    filter->peak =  (uint16_t)(M_SQRT1_2 * UINT16_MAX / Q_MAXIMUM); // 1/sqrt(2) effectively
 
-	double frequency = ((double)filter->cutoff * (filter->sample_rate>>1)) / UINT16_MAX;
-	double q = (double)filter->peak * Q_MAXIMUM / UINT16_MAX;
-	double w0 = (2.0 * M_PI * frequency) / filter->sample_rate;
-	double sinW0 = sin(w0);
-	double cosW0 = cos(w0);
-	double alpha = sinW0 / (q * 2.0f);
-	double scale = IIRSCALEFACTOR / (1 + alpha); // a0 = 1 + alpha
+  double frequency = ((double)filter->cutoff * (filter->sample_rate >> 1)) / UINT16_MAX;
+  double q = (double)filter->peak * Q_MAXIMUM / UINT16_MAX;
+  double w0 = (2.0 * M_PI * frequency) / filter->sample_rate;
+  double sinW0 = sin(w0);
+  double cosW0 = cos(w0);
+  double alpha = sinW0 / (q * 2.0f);
+  double scale = IIRSCALEFACTOR / (1 + alpha); // a0 = 1 + alpha
 
-	filter->b0	= float2int( alpha * scale );
-	filter->b1	= 0;
-	filter->b2	= float2int( -alpha * scale );
+  filter->b0	= float2int( alpha * scale );
+  filter->b1	= 0;
+  filter->b2	= float2int( -alpha * scale );
 
-	filter->a1	= float2int( (-2.0 * cosW0) * scale );
-	filter->a2	= float2int( (1.0 - alpha) * scale );
+  filter->a1	= float2int( (-2.0 * cosW0) * scale );
+  filter->a2	= float2int( (1.0 - alpha) * scale );
 }
 
 // Coefficients in 8.8 format
@@ -183,32 +183,32 @@ void setIIRFilterBPF( filter_t *filter ) // Band Pass Filter Setting
 // returns y(n) in place of x(n)
 void IIRFilter( filter_t *filter, int16_t * xn )
 {
-    int32_t yn;			// current output
-    int32_t  accum;		// temporary accumulator
+  int32_t yn;			// current output
+  int32_t  accum;		// temporary accumulator
 
-    // sum the 5 terms of the biquad IIR filter
-	// and update the state variables
-	// as soon as possible
-    MultiS16X16to32(yn,filter->xn_2,filter->b2);
-    filter->xn_2 = filter->xn_1;
+  // sum the 5 terms of the biquad IIR filter
+  // and update the state variables
+  // as soon as possible
+  MultiS16X16to32(yn, filter->xn_2, filter->b2);
+  filter->xn_2 = filter->xn_1;
 
-    MultiS16X16to32(accum,filter->xn_1,filter->b1);
-    yn += accum;
-    filter->xn_1 = *xn;
+  MultiS16X16to32(accum, filter->xn_1, filter->b1);
+  yn += accum;
+  filter->xn_1 = *xn;
 
-    MultiS16X16to32(accum,*xn,filter->b0);
-    yn += accum;
+  MultiS16X16to32(accum, *xn, filter->b0);
+  yn += accum;
 
-    MultiS16X16to32(accum,filter->yn_2,filter->a2);
-    yn -= accum;
-    filter->yn_2 = filter->yn_1;
+  MultiS16X16to32(accum, filter->yn_2, filter->a2);
+  yn -= accum;
+  filter->yn_2 = filter->yn_1;
 
-    MultiS16X16to32(accum,filter->yn_1,filter->a1);
-    yn -= accum;
+  MultiS16X16to32(accum, filter->yn_1, filter->a1);
+  yn -= accum;
 
-    filter->yn_1 = yn >> (IIRSCALEFACTORSHIFT + 8); // divide by a(0) = 32 & shift to 16.0 bit outcome from 24.8 interim steps
+  filter->yn_1 = yn >> (IIRSCALEFACTORSHIFT + 8); // divide by a(0) = 32 & shift to 16.0 bit outcome from 24.8 interim steps
 
-    *xn = filter->yn_1; // being 16 bit yn, so that's what we return.
+  *xn = filter->yn_1; // being 16 bit yn, so that's what we return.
 }
 
 /* Disable C linkage for C++ Compilers: */

@@ -1,4 +1,5 @@
-#include <stdlib.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -17,6 +18,7 @@
 #include "ADC.h"
 #include "IIR.h"
 #include "g711.h"
+#include "g726.h"
 
 #include "ModemClass.h"
 
@@ -130,10 +132,6 @@ transmitState_t modemState; // transmission engine state
 
 operateMode_t mode; // mode of operation, low power passive, or active
 
-LoRaModem modem; // instantiating a modem.
-
-filter_t tx_filter; // filter for processing samples from Microphone.
-
 /*-----------------------------------------------------------*/
 
 void setup() {
@@ -150,6 +148,7 @@ void setup() {
   modemState = NOTREADY;
   inputState = SETUP;
 }
+/*-----------------------------------------------------------*/
 
 void loop()
 {
@@ -211,16 +210,37 @@ void loop()
   }
 }
 /*-----------------------------------------------------------*/
+// Globals
 
 #define FRAM_START_ADDR     RAM0_ADDR
 #define FRAM_SIZE           8192
 
+ADC_value_t mod0Value; // address of individual audio sample
+
+filter_t txFilter; // filter for processing samples from Microphone.
+
+g726_state g726State;  // state for the g.726 encoder, maintaining predictors etc.
+
 eefs_ringBuffer_t acquisitionBufferXRAM; // where we store the samples from acquisition, G.711 companded or G.726 compressed.
 
-ADC_value_t mod0_value; // address of individual audio sample
+int16_t maximumSampleDelta;
+
+/*-----------------------------------------------------------*/
 
 void samplingEngine(void)
 {
+
+  uint16_t messageIndex;
+  uint16_t messageLengthBytes;
+
+  int16_t filteredSample;
+  uint8_t g711Byte;
+  uint8_t g726Byte;
+  uint8_t twoBits;
+
+  int16_t minimumSample;
+  int16_t maximumSample;
+
   switch (inputState)
   {
     case SETUP:
@@ -228,8 +248,10 @@ void samplingEngine(void)
       AudioCodec_ADC_init();
       AudioCodec_Timer2_init( SAMPLE_RATE );
 
-      tx_filter.cutoff = 0xc000;        // set filter to 3/8 of sample frequency (0xffff is 1/2 sample frequency)
-      setIIRFilterLPF( &tx_filter );    // initialise transmit sample filter
+      txFilter.cutoff = 0xc000;        // set filter to 3/8 of sample frequency (0xffff is 1/2 sample frequency)
+      setIIRFilterLPF( &txFilter );    // initialise transmit sample filter
+
+      g726_init_state( &g726State );    // initialise the 16kbit/s compression engine. 16 bits/sample -> 2 bits/sample
 
       eefs_ringBuffer_InitBuffer( &acquisitionBufferXRAM, FRAM_START_ADDR, FRAM_SIZE );
 
@@ -247,6 +269,8 @@ void samplingEngine(void)
     case SAMPLING:
       DEBUG_PRINT("inputState SAMPLING");
 
+      // AUDIO SAMPLING
+
       AudioCodec_Timer2_enable(); // turn on the timer 2 to enable acquisition of audio
 
       while ( ! eefs_ringBuffer_IsFull( &acquisitionBufferXRAM ) )
@@ -256,17 +280,60 @@ void samplingEngine(void)
 
       AudioCodec_Timer2_disable(); // turn on the timer 2 to enable acquisition of audio
 
+      // AUDIO ENCODING
+
+      messageLengthBytes = eefs_ringBuffer_GetCount( &acquisitionBufferXRAM );
+
+      for ( uint16_t i = 0; i < (messageLengthBytes >> 2); ++i ) // iterate over the message buffer, noting that we will capture 4x bytes per cycle.
+      {
+
+        g726Byte = 0; // prepare the g.726 byte for 4 x 2 bits.
+
+        for ( uint8_t j = 0; j < 4; ++j )
+        {
+          g711Byte = eefs_ringBuffer_Pop( &acquisitionBufferXRAM ); // get the 8 bit A Law encoded byte
+
+          // Quickly grab it back and find the peak delta value across the sample range.
+
+          alaw_expand1( &g711Byte, &filteredSample ); // expand the G.711 A Law encoded byte back to PCM 16 bits.
+
+          AudioCodec_samplePeaks( filteredSample, &minimumSample, &maximumSample );
+
+          // Now do the G.726 Encoding Section
+
+          g726Byte <<= 2; // shift the g.726 byte along two places (Would do this in fewer steps, but this is clear for debugging).
+
+          twoBits = (uint8_t) g726_16_encoder( (uint16_t)g711Byte, AUDIO_ENCODING_ALAW, &g726State ); // capture the two bits from the g.726 encoder
+
+          g726Byte |= (twoBits & 0x03); // mask in the new two bits, and do this four times.
+        }
+
+        eefs_ringBuffer_Poke( &acquisitionBufferXRAM, g726Byte ); // poke in the g.726 byte.
+        // At the end we should have only 1/4 the g.711 (or 1/8 the PCM) bytes, so messageLengthBytes should reflect that the XRAM buffer is 1/4 full.
+      }
+
+      maximumSampleDelta = maximumSample - minimumSample; // This is the maximum for this sampling second.
+
       inputState = PROCESSED;
       break;
 
     case PROCESSED:
       DEBUG_PRINT("inputState PROCESSED");
+
+      // Success!
+      // We wait here until the main logic asks us to sample again.
+
       break;
 
     default:
       break;
   }
 }
+/*-----------------------------------------------------------*/
+// Globals
+
+LoRaModem modem; // instantiating a modem.
+
 /*-----------------------------------------------------------*/
 
 void transmissionEngine(void)
@@ -278,7 +345,7 @@ void transmissionEngine(void)
   uint16_t messageIndex;
   uint16_t messageLengthBytes;
 
-  uint8_t byteG711;
+  uint8_t transmitByte;
   int16_t processedSample;
 
   switch (modemState)
@@ -315,11 +382,21 @@ void transmissionEngine(void)
     case PREAMBLE: // prepare the preamble commands
       DEBUG_PRINT("modemState PREAMBLE");
 
-      Type = "100";
+      Type = "108";
+      Command = Type + ',' + maximumSampleDelta;
+
+      DEBUG_PRINT( "Maximum Sample Delta" );
+      DEBUG_PRINT( Command );
+
+      while ( modem.cMsg( Command ) != 1)
+        DEBUG_PRINT("Failure");
+
+      Type = "101";
       messageIndex = 0xFFFF;
       messageLengthBytes =  eefs_ringBuffer_GetCount( &acquisitionBufferXRAM );
 
       Command = Type + ',' + messageIndex + ',' + messageLengthBytes;
+      // send an audio stream begin command with "101", Index 0xFFFF, and the number of bytes we expect to send.
 
       DEBUG_PRINT( Command );
 
@@ -332,18 +409,18 @@ void transmissionEngine(void)
     case PAYLOAD: // transmit the payload bytes
       DEBUG_PRINT("modemState PAYLOAD");
 
-      Type = "100";
+      Type = "1";
       messageIndex = 0x0000;
       messageLengthBytes = eefs_ringBuffer_GetCount( &acquisitionBufferXRAM );
 
       do {
 
-        Command = Type + ',' + (messageIndex++);
+        Command = Type + ' ' + (messageIndex++);
 
         for (uint8_t i = 0; i < 7; ++i)
         {
-          byteG711 = eefs_ringBuffer_Pop( &acquisitionBufferXRAM );
-          Command = Command + ',' + byteG711;
+          transmitByte = eefs_ringBuffer_Pop( &acquisitionBufferXRAM );
+          Command = Command + ' ' + transmitByte;
           --messageLengthBytes;
         }
         DEBUG_PRINT( Command);
@@ -353,10 +430,18 @@ void transmissionEngine(void)
           ack = modem.cMsg( Command );
         } while ( ack != 1);
 
-        // DEBUG_PRINT( byteG711 );
-        // alaw_expand1( &byteG711, &processedSample );
-        // DEBUG_PRINT( processedSample );
+        // DEBUG_PRINT( transmitByte );
+
       } while ( messageLengthBytes > 0  &&  messageIndex < 0xFFFF );
+
+      Type = "102";
+      Command = Type + ',' + messageIndex;
+      // Send an audio stream end command "102" with the total messages transmitted.
+
+      DEBUG_PRINT( Command);
+
+      while ( modem.cMsg( Command ) != 1)
+        DEBUG_PRINT("Failure");
 
       modemState = RESPONSE;
       break; // fall through to RESPONSE
@@ -398,7 +483,7 @@ void _powerDown(void)
   // Don't need to do this as putting the device to sleep will lock the pins.
   // Could come back to look at this by setting unused pins to input, with pull-up.
 }
-
+/*-----------------------------------------------------------*/
 
 
 void _sleep (uint8_t sleepMode, uint8_t WDTValue)
@@ -441,13 +526,15 @@ void _sleep (uint8_t sleepMode, uint8_t WDTValue)
   wdt_disable(); // we've got to disable the watchdog or it will trigger again.
 
 }
+/*-----------------------------------------------------------*/
+// Globals
 
 /*-----------------------------------------------------------*/
 
 ISR(TIMER2_COMPA_vect) // This interrupt for generating Audio samples. Should be between 4000 and 16000 samples per second.
 {
   uint8_t byteG711;
-  int16_t sample;
+  //  int16_t sample;
 
   while ( ! eefs_ringBuffer_IsFull( &acquisitionBufferXRAM ) )
   {
@@ -456,13 +543,13 @@ ISR(TIMER2_COMPA_vect) // This interrupt for generating Audio samples. Should be
     PORTD |=  _BV(PORTD7);        // Ping IO line.
 #endif
 
-    AudioCodec_ADC( &mod0_value.u16 );
+    AudioCodec_ADC( &mod0Value.u16 );
 
-    sample = mod0_value.u16 - 0x3e00; // This is offset using 5V supply. Will need to read adjust once it is running off battery.
+    mod0Value.i16 = mod0Value.u16 - 0x3e00; // This is offset using 5V supply. Will need to read adjust once it is running off battery.
 
-    IIRFilter( &tx_filter, &sample);  // filter the sample train prior to companding, with corner frequency set to 3/8 of sample rate.
+    IIRFilter( &txFilter, &mod0Value.i16);  // filter the sample train prior to companding, with corner frequency set to 3/8 of sample rate.
 
-    alaw_compress1( &sample, &byteG711 );
+    alaw_compress1( &mod0Value.i16, &byteG711 );
 
     eefs_ringBuffer_Poke( &acquisitionBufferXRAM, byteG711 );
 
@@ -472,6 +559,7 @@ ISR(TIMER2_COMPA_vect) // This interrupt for generating Audio samples. Should be
 #endif
   }
 }
+
 
 /*-----------------------------------------------------------*/
 
