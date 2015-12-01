@@ -14,8 +14,9 @@
 
 #include "spi.h"
 #include "eefs_ringBuffer.h"
-#include "g711.h"
 #include "ADC.h"
+#include "IIR.h"
+#include "g711.h"
 
 #include "ModemClass.h"
 
@@ -131,6 +132,8 @@ operateMode_t mode; // mode of operation, low power passive, or active
 
 LoRaModem modem; // instantiating a modem.
 
+filter_t tx_filter; // filter for processing samples from Microphone.
+
 /*-----------------------------------------------------------*/
 
 void setup() {
@@ -223,8 +226,10 @@ void samplingEngine(void)
     case SETUP:
       DEBUG_PRINT("inputState SETUP");
       AudioCodec_ADC_init();
-      AudioCodec_Timer2_init( 8000 );
+      AudioCodec_Timer2_init( SAMPLE_RATE );
 
+      tx_filter.cutoff = 0xc000;        // set filter to 3/8 of sample frequency (0xffff is 1/2 sample frequency)
+      setIIRFilterLPF( &tx_filter );    // initialise transmit sample filter
 
       eefs_ringBuffer_InitBuffer( &acquisitionBufferXRAM, FRAM_START_ADDR, FRAM_SIZE );
 
@@ -342,16 +347,16 @@ void transmissionEngine(void)
           --messageLengthBytes;
         }
         DEBUG_PRINT( Command);
-        
+
         uint8_t ack;
         do {
           ack = modem.cMsg( Command );
         } while ( ack != 1);
 
-          // DEBUG_PRINT( byteG711 );
-          // alaw_expand1( &byteG711, &processedSample );
-          // DEBUG_PRINT( processedSample );
-        } while ( messageLengthBytes > 0  &&  messageIndex < 0xFFFF );
+        // DEBUG_PRINT( byteG711 );
+        // alaw_expand1( &byteG711, &processedSample );
+        // DEBUG_PRINT( processedSample );
+      } while ( messageLengthBytes > 0  &&  messageIndex < 0xFFFF );
 
       modemState = RESPONSE;
       break; // fall through to RESPONSE
@@ -453,7 +458,9 @@ ISR(TIMER2_COMPA_vect) // This interrupt for generating Audio samples. Should be
 
     AudioCodec_ADC( &mod0_value.u16 );
 
-    sample = mod0_value.u16 - 0x3e00; // This is offset using 5V supply. Will need to read adjust once it is running off battery. Tomorrow
+    sample = mod0_value.u16 - 0x3e00; // This is offset using 5V supply. Will need to read adjust once it is running off battery.
+
+    IIRFilter( &tx_filter, &sample);  // filter the sample train prior to companding, with corner frequency set to 3/8 of sample rate.
 
     alaw_compress1( &sample, &byteG711 );
 
