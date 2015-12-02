@@ -135,6 +135,8 @@ transmitState_t modemState; // transmission engine state
 
 operateMode_t mode; // mode of operation, low power passive, or active
 
+LoRaModem modem; // instantiating a modem.
+
 uint8_t noiseEvent;
 
 /*-----------------------------------------------------------*/
@@ -207,8 +209,13 @@ void loop()
     case SLEEP:
 
       DEBUG_PRINT("deviceState SLEEP");
+
+      modem.lowPower();
+
       Serial.flush(); // empty the serial transmission buffer before we sleep.
-      _sleep( SLEEP_MODE_IDLE, WDTO_8S );
+
+      _sleep( SLEEP_MODE_EXT_STANDBY, WDTO_8S );
+      _sleep( SLEEP_MODE_IDLE, WDTO_60MS );
 
       deviceState = SAMPLE; // woken up from a global sleep, so start sampling
       inputState = PREPARATION;
@@ -225,7 +232,7 @@ void loop()
 #define FRAM_START_ADDR     RAM0_ADDR
 #define FRAM_SIZE           8192
 
-#define NOISE_TRIGGER       2000
+#define NOISE_TRIGGER       500
 
 ADC_value_t mod0Value; // address of individual audio sample
 
@@ -235,7 +242,7 @@ g726_state g726State;  // state for the g.726 encoder, maintaining predictors et
 
 eefs_ringBuffer_t acquisitionBufferXRAM; // where we store the samples from acquisition, G.711 companded or G.726 compressed.
 
-int16_t maximumSampleDelta;
+uint16_t maximumSampleDelta;
 
 /*-----------------------------------------------------------*/
 
@@ -271,7 +278,7 @@ void samplingEngine(void)
 
     case PREPARATION:
       DEBUG_PRINT("inputState PREPARATION");
-      
+
       eefs_ringBuffer_Flush( &acquisitionBufferXRAM );
 
       if (modemState == READY)
@@ -295,6 +302,7 @@ void samplingEngine(void)
       // AUDIO ENCODING
 
       messageLengthBytes = eefs_ringBuffer_GetCount( &acquisitionBufferXRAM );
+      maximumSampleDelta = 0;
 
       for ( uint16_t i = 0; i < (messageLengthBytes >> 2); ++i ) // iterate over the message buffer, noting that we will capture 4x bytes per cycle.
       {
@@ -326,8 +334,6 @@ void samplingEngine(void)
 
       maximumSampleDelta = maximumSample - minimumSample; // This is the maximum for this sampling second.
 
-      DEBUG_PRINT(maximumSampleDelta);
-
       if ( maximumSampleDelta - NOISE_TRIGGER > 0 )
         noiseEvent = TRUE;
 
@@ -348,8 +354,6 @@ void samplingEngine(void)
 }
 /*-----------------------------------------------------------*/
 // Globals
-
-LoRaModem modem; // instantiating a modem.
 
 packetPayload_t packetPayloadSize;
 
@@ -410,14 +414,10 @@ void transmissionEngine(void)
         default:
           packetPayloadSize = DR0;//11
       }
-      DEBUG_PRINT(packetPayloadSize);
 
       Command = "108,";
       Command = Command + maximumSampleDelta;
 
-      DEBUG_PRINT( "Maximum Sample Delta" );
-
-      DEBUG_PRINT( Command );
 
       while ( modem.cMsg( Command ) != 1)
         DEBUG_PRINT("Failure");
@@ -428,9 +428,12 @@ void transmissionEngine(void)
     case PAYLOAD: // transmit the payload bytes
       DEBUG_PRINT("modemState PAYLOAD");
 
+
+      //      Command = "DE AD BE EF CA FE F0 0D 00 BA BE";
+      //      modem.cMsgHEX( Command );
+
       struct {
-        uint8_t Type;
-        uiny8_t comma;
+        uint8_t messageType;
         uint16_t messageIndex;
         uint8_t bytes[DR3];
       } payloadStructure;
@@ -447,13 +450,12 @@ void transmissionEngine(void)
       while ( modem.cMsg( Command ) != 1)
         DEBUG_PRINT("Failure");
 
-      payloadStructure.Type = 1;
-      payloadStructure.comma = ',';
+      payloadStructure.messageType = 1;
       payloadStructure.messageIndex = 0x0000;
 
       do {
 
-        for (uint8_t i = 0; i < (uint8_t)(packetPayloadSize - sizeof(payloadStructure.Type) -sizeof(comma) - sizeof(payloadStructure.messageIndex)); ++i)
+        for (uint8_t i = 0; i < (uint8_t)(packetPayloadSize - sizeof(payloadStructure.messageType) - sizeof(payloadStructure.messageIndex)); ++i)
         {
           payloadStructure.bytes[i] = eefs_ringBuffer_Pop( &acquisitionBufferXRAM );
           --messageLengthBytes;
@@ -476,7 +478,7 @@ void transmissionEngine(void)
         DEBUG_PRINT("Failure");
 
       modemState = RESPONSE;
-      break; // fall through to RESPONSE
+      break;
 
     case RESPONSE: // handle responses from the network side
       DEBUG_PRINT("modemState RESPONSE");
@@ -492,8 +494,6 @@ void transmissionEngine(void)
 
 void _powerDown(void)
 {
-  DEBUG_PRINT("_powerDown()");
-
   // Analogue Comparator Disable
   // When the ACD bit is written logic one, the power to the Analogue Comparator is switched off.
   // This bit can be set at any time to turn off the Analogue Comparator.

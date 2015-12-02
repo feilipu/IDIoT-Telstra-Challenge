@@ -3,6 +3,8 @@
    Class example for communicating the the Telstra LPWAN modem.
 */
 
+#include <stdlib.h>
+
 #include <Arduino.h>
 
 // To have the Regexp.h line below work, firstly
@@ -166,18 +168,6 @@ int LoRaModem::setPort(String portNum) {
 
 };
 
-// Send a message, expect an ACK
-int LoRaModem::cMsg(String message) {
-  _sendSerial("AT+CMSG=\"" + message + "\"");
-
-  if (_checkresponse(".+ACK Received.+CMSG: Done"))
-  {
-    return 1;
-  }
-
-  return 0;
-}
-
 // Send a message, don't expect an ACK
 int LoRaModem::Msg(String message) {
   _sendSerial("AT+MSG=\"" + message + "\"");
@@ -188,22 +178,11 @@ int LoRaModem::Msg(String message) {
   }
 
   return 0;
-}
+};
 
-/******************
-   cMsgBytes
-   Send a message, expect an ACK
-*/
-int LoRaModem::cMsgBytes(uint8_t * bytes, int16_t length) {
-  _LoRaSerial.read();
-  _LoRaSerial.print("AT+CMSG=\"");
-
-  while (length--) {
-    DEBUG_PRINT(*bytes);
-    _LoRaSerial.write( *bytes++ );
-  }
-
-  _LoRaSerial.println("\"");
+// Send a message, expect an ACK
+int LoRaModem::cMsg(String message) {
+  _sendSerial("AT+CMSG=\"" + message + "\"");
 
   if (_checkresponse(".+ACK Received.+CMSG: Done"))
   {
@@ -211,7 +190,69 @@ int LoRaModem::cMsgBytes(uint8_t * bytes, int16_t length) {
   }
 
   return 0;
-}
+};
+
+// Send a HEX string message, don't expect an ACK
+int LoRaModem::MsgHEX(String message) {
+  _sendSerial("AT+MSGHEX=\"" + message + "\"");
+
+  if (_checkresponse(".+MSGHEX: Done"))
+  {
+    return 1;
+  }
+
+  return 0;
+};
+
+// Send a HEX string message, expect an ACK
+int LoRaModem::cMsgHEX(String message) {
+  _sendSerial("AT+CMSGHEX=\"" + message + "\"");
+
+  if (_checkresponse(".+ACK Received.+CMSGHEX: Done"))
+  {
+    return 1;
+  }
+
+  return 0;
+};
+
+
+/******************
+   cMsgBytes
+   Send a byte array message, expect an ACK
+*/
+int LoRaModem::cMsgBytes(uint8_t * bytes, int16_t length) {
+
+  char buf[4];
+
+  _LoRaSerial.read();
+  _LoRaSerial.write("AT+CMSGHEX=\"");
+
+  while (length--) {
+    itoa(*bytes++, buf, 16);
+    _LoRaSerial.write( buf, 2 );
+    _LoRaSerial.write(' ');
+  }
+
+  _LoRaSerial.write("\"\r\n");
+
+  if (_checkresponse(".+ACK Received.+CMSGHEX: Done"))
+  {
+    return 1;
+  }
+
+  return 0;
+};
+
+int LoRaModem::lowPower() {
+   _sendSerial("AT+LOWPOWER");
+
+  if (_checkresponse(".+LOWPOWER: OK.+"))
+  {
+    return 1;
+  }
+  return 0;
+};
 
 // Reset the modem
 int LoRaModem::Reset() {
@@ -222,7 +263,7 @@ int LoRaModem::Reset() {
     return 1;
   }
   return 0;
-}
+};
 
 // Extract the downlink payload (if any) and convert to ASCII
 String LoRaModem::getAscii() {
@@ -248,5 +289,5 @@ String LoRaModem::getAscii() {
     DEBUG_PRINT("No ASCII payload...");
     return "";
   }
-}
+};
 

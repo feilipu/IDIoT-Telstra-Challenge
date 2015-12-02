@@ -38,9 +38,13 @@
    LoRaModem.setID()   -> Set the ID parameters in the modem
    LoRaModem.setKeys() -> Set the NW and App ciphering / integrity keys
    LoRaModem.setPort() -> Set the port # for App payloads
-   LoRaModem.cMsg()    -> Send a message, wait for an ACK
    LoRaModem.Msg()     -> Send a message, no ACK (uplink only)
+   LoRaModem.MsgHEX()  -> Send a HEX string message, no ACK (uplink only)
+   LoRaModem.cMsg()    -> Send a message, wait for an ACK
+   LoRaModem.cMsgHEX() -> Send a HEX string message, wait for an ACK
+   LoRaModem.cMsgBytes()> Send a Hex message from a bytes buffer, wait for an ACK
    LoRaModem.Reset()   -> Reset the modem. This is useful if it hangs, sometimes happens after sending a few hundred messages
+   LoRaModem.lowPower()-> Sleep the modem.  
    LoRaModem.getAscii()-> If a Downlink payload is received, extract it and decode from hex to Ascii (use after Msg or cMsg).
 
    LoRaModem.modemResp -> char buffer with the last message received on UART
@@ -57,9 +61,12 @@ class LoRaModem
     int setID(String addr, String dev);
     int setKeys(String NWKey, String AppKey);
     int setPort(String portNum);
-    int cMsg(String message);
-    int cMsgBytes(uint8_t * bytes, int16_t length);
     int Msg(String message);
+    int MsgHEX(String message);
+    int cMsg(String message);
+    int cMsgHEX(String message);
+    int cMsgBytes(uint8_t * bytes, int16_t length);
+    int lowPower();
     int Reset();
 
     String getAscii();
