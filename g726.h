@@ -105,7 +105,7 @@ int16_t ulaw2linear(int16_t u_val);
 int16_t linear2alaw(int16_t pcm_val);
 int16_t alaw2linear(int16_t u_val);
 
-static int16_t fmult(int16_t an, int16_t srn);
+//static int16_t fmult(int16_t an, int16_t srn);
 int16_t predictor_zero(	g726_state *state_ptr);
 int16_t predictor_pole(	g726_state *state_ptr);
 int16_t step_size(	g726_state *state_ptr);

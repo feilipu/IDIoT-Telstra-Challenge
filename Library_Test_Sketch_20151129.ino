@@ -40,6 +40,9 @@
 #define DEBUG_PRINT(x)
 #endif
 
+#define TRUE 1
+#define FALSE 0
+
 /*-----------------------------------------------------------*/
 // Type Definitions
 
@@ -132,6 +135,8 @@ transmitState_t modemState; // transmission engine state
 
 operateMode_t mode; // mode of operation, low power passive, or active
 
+uint8_t noiseEvent;
+
 /*-----------------------------------------------------------*/
 
 void setup() {
@@ -175,9 +180,13 @@ void loop()
 
       samplingEngine();
 
-      if ( modemState == READY && inputState == PROCESSED )
+      if ( modemState == READY && inputState == PROCESSED && noiseEvent == TRUE )
       {
         deviceState = TRANSMIT;
+      }
+      else if ( inputState == PROCESSED && noiseEvent == FALSE )
+      {
+        deviceState = SLEEP;
       }
       break;
 
@@ -191,7 +200,6 @@ void loop()
 
       if ( inputState == PROCESSED && modemState == READY )
       {
-        inputState = PREPARATION;
         deviceState = SLEEP;
       }
       break;
@@ -200,8 +208,10 @@ void loop()
 
       DEBUG_PRINT("deviceState SLEEP");
       Serial.flush(); // empty the serial transmission buffer before we sleep.
-      _sleep( SLEEP_MODE_STANDBY, WDTO_8S );
+      _sleep( SLEEP_MODE_IDLE, WDTO_8S );
+      
       deviceState = SAMPLE; // woken up from a global sleep, so start sampling
+      inputState = PREPARATION;
       break;
 
     default:
@@ -214,6 +224,8 @@ void loop()
 
 #define FRAM_START_ADDR     RAM0_ADDR
 #define FRAM_SIZE           8192
+
+#define NOISE_TRIGGER       2000
 
 ADC_value_t mod0Value; // address of individual audio sample
 
@@ -238,8 +250,8 @@ void samplingEngine(void)
   uint8_t g726Byte;
   uint8_t twoBits;
 
-  int16_t minimumSample;
-  int16_t maximumSample;
+  int16_t minimumSample = 0;
+  int16_t maximumSample = 0;
 
   switch (inputState)
   {
@@ -301,9 +313,9 @@ void samplingEngine(void)
 
           // Now do the G.726 Encoding Section
 
-          g726Byte <<= 2; // shift the g.726 byte along two places (Would do this in fewer steps, but this is clear for debugging).
-
           twoBits = (uint8_t) g726_16_encoder( (uint16_t)g711Byte, AUDIO_ENCODING_ALAW, &g726State ); // capture the two bits from the g.726 encoder
+
+          g726Byte <<= 2; // shift the current g.726 byte along two places (Would do this in fewer steps, but this is clear for debugging).
 
           g726Byte |= (twoBits & 0x03); // mask in the new two bits, and do this four times.
         }
@@ -313,6 +325,11 @@ void samplingEngine(void)
       }
 
       maximumSampleDelta = maximumSample - minimumSample; // This is the maximum for this sampling second.
+
+      DEBUG_PRINT(maximumSampleDelta);
+
+      if ( maximumSampleDelta - NOISE_TRIGGER > 0 )
+        noiseEvent = TRUE;
 
       inputState = PROCESSED;
       break;
@@ -332,7 +349,13 @@ void samplingEngine(void)
 /*-----------------------------------------------------------*/
 // Globals
 
+
+#define ADDRESSING_OVERHEAD 4
+
+
 LoRaModem modem; // instantiating a modem.
+
+packetPayload_t packetPayloadSize;
 
 /*-----------------------------------------------------------*/
 
@@ -346,8 +369,6 @@ void transmissionEngine(void)
   uint16_t messageLengthBytes;
 
   uint8_t transmitByte;
-  int16_t processedSample;
-  int packetPayloadSize;
 
   switch (modemState)
   {
@@ -380,21 +401,21 @@ void transmissionEngine(void)
     case PREAMBLE: // prepare the preamble commands
       DEBUG_PRINT("modemState PREAMBLE");
 
-      switch(modem.getDR()) {
+      switch (modem.getDR()) {
         case 0:
-          packetPayloadSize = 7;//11
+          packetPayloadSize = (packetPayload_t)(DR0 - ADDRESSING_OVERHEAD);//11
           break;
         case 1:
-          packetPayloadSize = 49;//53
+          packetPayloadSize = (packetPayload_t)(DR1 - ADDRESSING_OVERHEAD);//53
           break;
         case 2:
-          packetPayloadSize = 125;//129
+          packetPayloadSize = (packetPayload_t)(DR2 - ADDRESSING_OVERHEAD);//129
           break;
         case 3:
-          packetPayloadSize = 246;//250
+          packetPayloadSize = (packetPayload_t)(DR3 - ADDRESSING_OVERHEAD);//250
           break;
         default:
-          packetPayloadSize = 7;//11
+          packetPayloadSize = (packetPayload_t)(DR0 - ADDRESSING_OVERHEAD);//11
       }
       DEBUG_PRINT(packetPayloadSize);
 
@@ -433,7 +454,7 @@ void transmissionEngine(void)
 
         Command = Type + ' ' + (messageIndex++);
 
-        for (uint8_t i = 0; i < packetPayloadSize; ++i)
+        for (uint8_t i = 0; i < (uint8_t)packetPayloadSize; ++i)
         {
           transmitByte = eefs_ringBuffer_Pop( &acquisitionBufferXRAM );
           Command = Command + ' ' + transmitByte;
@@ -545,12 +566,14 @@ void _sleep (uint8_t sleepMode, uint8_t WDTValue)
 /*-----------------------------------------------------------*/
 // Globals
 
+#define ADC_NULL_OFFSET 0x3e00 // USB Powered
+//#define ADC_NULL_OFFSET 0x3e00 // Battery Powered
+
 /*-----------------------------------------------------------*/
 
 ISR(TIMER2_COMPA_vect) // This interrupt for generating Audio samples. Should be between 4000 and 16000 samples per second.
 {
-  uint8_t byteG711;
-  //  int16_t sample;
+  uint8_t g711Byte;
 
   while ( ! eefs_ringBuffer_IsFull( &acquisitionBufferXRAM ) )
   {
@@ -561,13 +584,13 @@ ISR(TIMER2_COMPA_vect) // This interrupt for generating Audio samples. Should be
 
     AudioCodec_ADC( &mod0Value.u16 );
 
-    mod0Value.i16 = mod0Value.u16 - 0x3e00; // This is offset using 5V supply. Will need to read adjust once it is running off battery.
+    mod0Value.i16 = mod0Value.u16 - ADC_NULL_OFFSET; // This is offset using 5V supply. Will need to read adjust once it is running off battery.
 
     IIRFilter( &txFilter, &mod0Value.i16);  // filter the sample train prior to companding, with corner frequency set to 3/8 of sample rate.
 
-    alaw_compress1( &mod0Value.i16, &byteG711 );
+    alaw_compress1( &mod0Value.i16, &g711Byte );
 
-    eefs_ringBuffer_Poke( &acquisitionBufferXRAM, byteG711 );
+    eefs_ringBuffer_Poke( &acquisitionBufferXRAM, g711Byte );
 
 #if defined(DEBUG_PING)
     // end mark - check for end of interrupt - for debugging only
