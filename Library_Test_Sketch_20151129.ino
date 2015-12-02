@@ -347,6 +347,7 @@ void transmissionEngine(void)
 
   uint8_t transmitByte;
   int16_t processedSample;
+  int packetPayloadSize;
 
   switch (modemState)
   {
@@ -361,9 +362,6 @@ void transmissionEngine(void)
           _sleep(SLEEP_MODE_IDLE, WDTO_2S);
 
           modem.checkAT();
-          _sleep(SLEEP_MODE_IDLE, WDTO_2S);
-
-          modem.checkDR();
           _sleep(SLEEP_MODE_IDLE, WDTO_2S);
 
           //  modem.setID(idDevAddr, idDevEui);
@@ -381,6 +379,24 @@ void transmissionEngine(void)
 
     case PREAMBLE: // prepare the preamble commands
       DEBUG_PRINT("modemState PREAMBLE");
+
+      switch(modem.getDR()) {
+        case 0:
+          packetPayloadSize = 7;//11
+          break;
+        case 1:
+          packetPayloadSize = 49;//53
+          break;
+        case 2:
+          packetPayloadSize = 125;//129
+          break;
+        case 3:
+          packetPayloadSize = 246;//250
+          break;
+        default:
+          packetPayloadSize = 7;//11
+      }
+      DEBUG_PRINT(packetPayloadSize);
 
       Type = "108";
       Command = Type + ',' + maximumSampleDelta;
@@ -417,7 +433,7 @@ void transmissionEngine(void)
 
         Command = Type + ' ' + (messageIndex++);
 
-        for (uint8_t i = 0; i < 7; ++i)
+        for (uint8_t i = 0; i < packetPayloadSize; ++i)
         {
           transmitByte = eefs_ringBuffer_Pop( &acquisitionBufferXRAM );
           Command = Command + ' ' + transmitByte;
