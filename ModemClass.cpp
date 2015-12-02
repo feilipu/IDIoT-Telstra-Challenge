@@ -39,7 +39,7 @@ void LoRaModem::_sendSerial(String message)
    Generic private method for reading back from the modem, and qualifying the response against a Regex
 */
 
-int LoRaModem::_checkresponse(char* checkVal, int call_timeout = rx_timeout)
+int LoRaModem::_checkresponse(const char* checkVal, int call_timeout = rx_timeout)
 {
   modemResp[0] = 0;
 
@@ -107,12 +107,16 @@ int LoRaModem::checkID() {
 };
 
 // Find out current network data class
-int LoRaModem::checkDR() {
+int LoRaModem::getDR() {
+  _DR[0] = '0';
   _sendSerial("AT+DR");
-  if (_checkresponse("%+DR: DR+", rx_timeout_fast))
+  if (_checkresponse("%+DR: (.+)\r\n", rx_timeout_fast))
   {
     return 1;
   }
+  _rspMs.GetCapture (_DR, 0);
+
+  return int(_DR[0]);
 };
 
 // Set the modem ID

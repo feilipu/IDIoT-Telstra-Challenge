@@ -20,7 +20,7 @@
 #define DEBUG
 
 #define rx_timeout 8000
-#define rx_timeout_fast 500
+#define rx_timeout_fast 1000
 #define rx_buffer 128
 
 #ifdef DEBUG
@@ -53,7 +53,7 @@ class LoRaModem
     LoRaModem();
     int checkAT();
     int checkID();
-    int checkDR();
+    int getDR();
     int setID(String addr, String dev);
     int setKeys(String NWKey, String AppKey);
     int setPort(String portNum);
@@ -71,7 +71,8 @@ class LoRaModem
   private:
     MatchState _rspMs;
     void _sendSerial(String message);
-    int _checkresponse(char* checkVal, int call_timeout);
+    int _checkresponse(const char* checkVal, int call_timeout);
+    char _DR[1];
 };
 
 
