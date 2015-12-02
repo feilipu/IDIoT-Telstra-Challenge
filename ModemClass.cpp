@@ -194,12 +194,13 @@ int LoRaModem::Msg(String message) {
    cMsgBytes
    Send a message, expect an ACK
 */
-int LoRaModem::cMsgBytes(bytes[] bytes, int pos, int length){
+int LoRaModem::cMsgBytes(uint8_t * bytes, int16_t length) {
   _LoRaSerial.read();
   _LoRaSerial.print("AT+CMSG=\"");
 
-  while(length--) {
-    _LoRaSerial.write(byte[pos++]);
+  while (length--) {
+    DEBUG_PRINT(*bytes);
+    _LoRaSerial.write( *bytes++ );
   }
 
   _LoRaSerial.println("\"");

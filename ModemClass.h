@@ -58,7 +58,7 @@ class LoRaModem
     int setKeys(String NWKey, String AppKey);
     int setPort(String portNum);
     int cMsg(String message);
-    int cMsgBytes(bytes[] bytes, int pos, int length);
+    int cMsgBytes(uint8_t * bytes, int16_t length);
     int Msg(String message);
     int Reset();
 

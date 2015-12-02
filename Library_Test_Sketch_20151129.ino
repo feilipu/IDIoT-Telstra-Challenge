@@ -209,7 +209,7 @@ void loop()
       DEBUG_PRINT("deviceState SLEEP");
       Serial.flush(); // empty the serial transmission buffer before we sleep.
       _sleep( SLEEP_MODE_IDLE, WDTO_8S );
-      
+
       deviceState = SAMPLE; // woken up from a global sleep, so start sampling
       inputState = PREPARATION;
       break;
@@ -241,8 +241,6 @@ int16_t maximumSampleDelta;
 
 void samplingEngine(void)
 {
-
-  uint16_t messageIndex;
   uint16_t messageLengthBytes;
 
   int16_t filteredSample;
@@ -257,6 +255,7 @@ void samplingEngine(void)
   {
     case SETUP:
       DEBUG_PRINT("inputState SETUP");
+
       AudioCodec_ADC_init();
       AudioCodec_Timer2_init( SAMPLE_RATE );
 
@@ -272,6 +271,7 @@ void samplingEngine(void)
 
     case PREPARATION:
       DEBUG_PRINT("inputState PREPARATION");
+      
       eefs_ringBuffer_Flush( &acquisitionBufferXRAM );
 
       if (modemState == READY)
@@ -287,7 +287,7 @@ void samplingEngine(void)
 
       while ( ! eefs_ringBuffer_IsFull( &acquisitionBufferXRAM ) )
       {
-        _delay_ms(500);
+        _delay_ms(50);
       }
 
       AudioCodec_Timer2_disable(); // turn on the timer 2 to enable acquisition of audio
@@ -349,10 +349,6 @@ void samplingEngine(void)
 /*-----------------------------------------------------------*/
 // Globals
 
-
-#define ADDRESSING_OVERHEAD 4
-
-
 LoRaModem modem; // instantiating a modem.
 
 packetPayload_t packetPayloadSize;
@@ -363,30 +359,26 @@ void transmissionEngine(void)
 {
 
   String Command; // Final command to the modem
-  String Type; // Which command we're going to use.
-
-  uint16_t messageIndex;
   uint16_t messageLengthBytes;
-
-  uint8_t transmitByte;
 
   switch (modemState)
   {
     case NOTREADY:
       DEBUG_PRINT("modemState NOTREADY");
+
       if ( ! modem.Reset() )
       {
-        _sleep(SLEEP_MODE_IDLE, WDTO_2S);
+        _sleep(SLEEP_MODE_IDLE, WDTO_1S);
         if ( ! modem.setPort("1") )
         {
           modemState = READY;
-          _sleep(SLEEP_MODE_IDLE, WDTO_2S);
+          _sleep(SLEEP_MODE_IDLE, WDTO_1S);
 
           modem.checkAT();
-          _sleep(SLEEP_MODE_IDLE, WDTO_2S);
+          _sleep(SLEEP_MODE_IDLE, WDTO_1S);
 
           //  modem.setID(idDevAddr, idDevEui);
-          //  _sleep(SLEEP_MODE_IDLE, WDTO_2S);
+          //  _sleep(SLEEP_MODE_IDLE, WDTO_1S);
           //  modem.setKeys(idNwSKey, idAppSKey);
         }
       }
@@ -394,6 +386,7 @@ void transmissionEngine(void)
 
     case READY: // ready to transmit, but if there is nothing to transmit then break;
       DEBUG_PRINT("modemState READY");
+
       if (inputState == PROCESSED)
         modemState = PREAMBLE;
       break;
@@ -403,37 +396,26 @@ void transmissionEngine(void)
 
       switch (modem.getDR()) {
         case 0:
-          packetPayloadSize = (packetPayload_t)(DR0 - ADDRESSING_OVERHEAD);//11
+          packetPayloadSize = DR0;//11
           break;
         case 1:
-          packetPayloadSize = (packetPayload_t)(DR1 - ADDRESSING_OVERHEAD);//53
+          packetPayloadSize = DR1;//53
           break;
         case 2:
-          packetPayloadSize = (packetPayload_t)(DR2 - ADDRESSING_OVERHEAD);//129
+          packetPayloadSize = DR2;//129
           break;
         case 3:
-          packetPayloadSize = (packetPayload_t)(DR3 - ADDRESSING_OVERHEAD);//250
+          packetPayloadSize = DR3;//250
           break;
         default:
-          packetPayloadSize = (packetPayload_t)(DR0 - ADDRESSING_OVERHEAD);//11
+          packetPayloadSize = DR0;//11
       }
       DEBUG_PRINT(packetPayloadSize);
 
-      Type = "108";
-      Command = Type + ',' + maximumSampleDelta;
+      Command = "108,";
+      Command = Command + maximumSampleDelta;
 
       DEBUG_PRINT( "Maximum Sample Delta" );
-      DEBUG_PRINT( Command );
-
-      while ( modem.cMsg( Command ) != 1)
-        DEBUG_PRINT("Failure");
-
-      Type = "101";
-      messageIndex = 0xFFFF;
-      messageLengthBytes =  eefs_ringBuffer_GetCount( &acquisitionBufferXRAM );
-
-      Command = Type + ',' + messageIndex + ',' + messageLengthBytes;
-      // send an audio stream begin command with "101", Index 0xFFFF, and the number of bytes we expect to send.
 
       DEBUG_PRINT( Command );
 
@@ -446,33 +428,44 @@ void transmissionEngine(void)
     case PAYLOAD: // transmit the payload bytes
       DEBUG_PRINT("modemState PAYLOAD");
 
-      Type = "1";
-      messageIndex = 0x0000;
-      messageLengthBytes = eefs_ringBuffer_GetCount( &acquisitionBufferXRAM );
+      struct {
+        uint8_t Type;
+        uint16_t messageIndex;
+        uint8_t bytes[DR3];
+      } payloadStructure;
+
+      payloadStructure.messageIndex = 0xFFFF;
+      messageLengthBytes =  eefs_ringBuffer_GetCount( &acquisitionBufferXRAM );
+
+      Command = "101,";
+      Command = Command + payloadStructure.messageIndex  + ',' + messageLengthBytes;
+      // send an audio stream begin command with "101", Index 0xFFFF, and the number of bytes we expect to send.
+
+      DEBUG_PRINT( Command );
+
+      while ( modem.cMsg( Command ) != 1)
+        DEBUG_PRINT("Failure");
+
+      payloadStructure.Type = 1;
+      payloadStructure.messageIndex = 0x0000;
 
       do {
 
-        Command = Type + ' ' + (messageIndex++);
-
-        for (uint8_t i = 0; i < (uint8_t)packetPayloadSize; ++i)
+        for (uint8_t i = 0; i < (uint8_t)(packetPayloadSize - sizeof(payloadStructure.Type) - sizeof(payloadStructure.messageIndex)); ++i)
         {
-          transmitByte = eefs_ringBuffer_Pop( &acquisitionBufferXRAM );
-          Command = Command + ' ' + transmitByte;
+          payloadStructure.bytes[i] = eefs_ringBuffer_Pop( &acquisitionBufferXRAM );
           --messageLengthBytes;
         }
-        DEBUG_PRINT( Command);
 
         uint8_t ack;
         do {
-          ack = modem.cMsg( Command );
+          ack = modem.cMsgBytes( (uint8_t *)&payloadStructure, (uint16_t)packetPayloadSize );
         } while ( ack != 1);
 
-        // DEBUG_PRINT( transmitByte );
+      } while ( messageLengthBytes > 0  &&  ++payloadStructure.messageIndex < 0xFFFF );
 
-      } while ( messageLengthBytes > 0  &&  messageIndex < 0xFFFF );
-
-      Type = "102";
-      Command = Type + ',' + messageIndex;
+      Command = "102,";
+      Command = Command + payloadStructure.messageIndex;
       // Send an audio stream end command "102" with the total messages transmitted.
 
       DEBUG_PRINT( Command);
