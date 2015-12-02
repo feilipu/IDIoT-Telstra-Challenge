@@ -190,6 +190,28 @@ int LoRaModem::Msg(String message) {
   return 0;
 }
 
+/******************
+   cMsgBytes
+   Send a message, expect an ACK
+*/
+int LoRaModem::cMsgBytes(bytes[] bytes, int pos, int length){
+  _LoRaSerial.read();
+  _LoRaSerial.print("AT+CMSG=\"");
+
+  while(length--) {
+    _LoRaSerial.write(byte[pos++]);
+  }
+
+  _LoRaSerial.println("\"");
+
+  if (_checkresponse(".+ACK Received.+CMSG: Done"))
+  {
+    return 1;
+  }
+
+  return 0;
+}
+
 // Reset the modem
 int LoRaModem::Reset() {
   _sendSerial("AT+RESET");
