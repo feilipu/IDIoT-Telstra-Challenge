@@ -430,6 +430,7 @@ void transmissionEngine(void)
 
       struct {
         uint8_t Type;
+        uiny8_t comma;
         uint16_t messageIndex;
         uint8_t bytes[DR3];
       } payloadStructure;
@@ -447,11 +448,12 @@ void transmissionEngine(void)
         DEBUG_PRINT("Failure");
 
       payloadStructure.Type = 1;
+      payloadStructure.comma = ',';
       payloadStructure.messageIndex = 0x0000;
 
       do {
 
-        for (uint8_t i = 0; i < (uint8_t)(packetPayloadSize - sizeof(payloadStructure.Type) - sizeof(payloadStructure.messageIndex)); ++i)
+        for (uint8_t i = 0; i < (uint8_t)(packetPayloadSize - sizeof(payloadStructure.Type) -sizeof(comma) - sizeof(payloadStructure.messageIndex)); ++i)
         {
           payloadStructure.bytes[i] = eefs_ringBuffer_Pop( &acquisitionBufferXRAM );
           --messageLengthBytes;
