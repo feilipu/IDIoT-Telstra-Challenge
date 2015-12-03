@@ -112,13 +112,36 @@ int LoRaModem::checkID() {
 int LoRaModem::getDR() {
   _DR[0] = '0';
   _sendSerial("AT+DR");
-  if (_checkresponse("%+DR: (.+)\r\n", rx_timeout_fast))
+  if (_checkresponse("%+DR: DR(.+)\r\n", rx_timeout_fast))
   {
     return 1;
   }
   _rspMs.GetCapture (_DR, 0);
 
   return int(_DR[0]);
+};
+
+
+// Set DR, where DR is "DR0", "DR1", "DR2" or "DR3"
+int LoRaModem::setDR(String DR) {
+  _sendSerial("AT+DR=" + DR);
+  if (_checkresponse("%+DR: DR.+", rx_timeout_fast))
+  {
+    return 1;
+  }
+
+  return 0;
+};
+
+// Disable ADR
+int LoRaModem::disableADR() {
+  _sendSerial("AT+ADR=OFF");
+  if (_checkresponse("%+ADR: OFF.+", rx_timeout_fast))
+  {
+    return 1;
+  }
+
+  return 0;
 };
 
 // Set the modem ID
@@ -230,7 +253,11 @@ int LoRaModem::cMsgBytes(uint8_t * bytes, int16_t length) {
 
   while (length--) {
     itoa(*bytes++, buf, 16);
+<<<<<<< HEAD
     _LoRaSerial.write( buf, 2 ); // no space required. tested.
+=======
+    _LoRaSerial.write( buf, 2 );
+>>>>>>> 273a02a6bc423a0ba7273f45aaead0e6660fd051
   }
 
   _LoRaSerial.write("\"\r\n");
