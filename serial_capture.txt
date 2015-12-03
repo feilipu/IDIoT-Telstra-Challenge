@@ -1,5 +1,4 @@
 deviceState INITIALISE
-_powerDown()
 inputState SETUP
 modemState NOTREADY
 > AT+RESET
@@ -8,6 +7,12 @@ modemState NOTREADY
 -------------------------------------------------------------------------------
 LoRaWAN AT Modem
 +VER: 1.7.1
+
+> AT+ADR=OFF
++ADR: OFF
+
+> AT+DR=DR0
++DR: DR0
 
 > AT+PORT=1
 +PORT: OK
@@ -19,37 +24,6 @@ deviceState SAMPLE
 inputState PREPARATION
 deviceState SAMPLE
 inputState SAMPLING
-448
-deviceState SLEEP
-deviceState SAMPLE
-inputState PREPARATION
-deviceState SAMPLE
-inputState SAMPLING
-432
-deviceState SLEEP
-deviceState SAMPLE
-inputState PREPARATION
-deviceState SAMPLE
-inputState SAMPLING
-512
-deviceState SLEEP
-deviceState SAMPLE
-inputState PREPARATION
-deviceState SAMPLE
-inputState SAMPLING
-512
-deviceState SLEEP
-deviceState SAMPLE
-inputState PREPARATION
-deviceState SAMPLE
-inputState SAMPLING
-464
-deviceState SLEEP
-deviceState SAMPLE
-inputState PREPARATION
-deviceState SAMPLE
-inputState SAMPLING
-7424
 deviceState TRANSMIT
 modemState READY
 deviceState TRANSMIT
@@ -58,111 +32,521 @@ modemState PREAMBLE
 +DR: DR0
 
 11
-Maximum Sample Delta
-108,12370
-
-Unexpected response / no response
+> AT+CMSG="108,1472"
 +CMSG: Start LoRaWAN transaction
 +CMSG: Wait ACK
++CMSG: ACK Received
++CMSG: RXWIN1, RSSI -102, SNR 0.75
++CMSG: Done
 
 deviceState TRANSMIT
 modemState PAYLOAD
-101,65535,2048
-
-Unexpected response / no response
-+CMSG: LoRaWAN modem is busy
+101,2048
+> AT+CMSG="101,2048"
++CMSG: Start LoRaWAN transaction
++CMSG: Wait ACK
++CMSG: ACK Received
++CMSG: RXWIN1, RSSI -100, SNR 0.5
 +CMSG: Done
 
-1
-0
-0
-49
-195
-194
-60
-204
-28
-192
-63
-Unexpected response / no response
-+�: EI=I�d�)
+Remaining messageLengthBytes
+2038
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1A AA AA AB AF FE FF BF EC FB F0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -106, SNR -3.25
++CMSGHEX: Done
 
-1
-1
-0
-254
-60
-248
-60
-0
-4
-12
-195
-Unexpected response / no response
-+A� E�=I�-2R
+Remaining messageLengthBytes
+2028
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 3F F8 FC FC 20 03 10 D4 00"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -106, SNR -3.25
++CMSGHEX: Done
 
-1
-2
-0
-219
-3
-48
-16
-0
-55
-0
-31
-Unexpected response / no response
-+AT ERR��-23)
-1
-3
-0
-115
-3
-3
-12
-192
-194
-0
-63
-Unexpected response / no response
-+At E�=I�-2R
+Remaining messageLengthBytes
+2018
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 D1 C0 4C 37 0C 34 F6 10"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -96, SNR -2.25
++CMSGHEX: Done
 
-1
-4
-0
-245
-192
-240
-127
-192
-220
-243
-12
-Unexpected response / no response
-+AT@II=Ij��Jj�
-1
-5
-0
-7
-12
-28
-12
-1
-15
-2
-192
-Unexpected response / no response
-+A� E�=I��3)
-�
-1
-6
-0
-204
-112
-240
-12
-76
-11
-243
-63
+Remaining messageLengthBytes
+2008
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1F 33 03 CC F3 FE 32 38 F3 FF 30"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -97, SNR 3.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1998
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "18 2C 38 F3 23 3C FC 0F C7 0E 10"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN2, RSSI -101, SNR 2.75
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1988
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 DC C0 10 C0 43 1C 70 D3 70"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -99, SNR 2.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1978
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1C 7C FF 2F CC EF CF EF E0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -102, SNR 0.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1968
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "18 FE 3F 38 FC 8F CE FC 8C 00"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -97, SNR -4
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1958
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1F F7 0C 33 01 1F 1D C3 01 31 C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -99, SNR 3.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1948
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "10 1C 73 7C 0F 07 3F F7 F0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -100, SNR 1.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1938
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "12 FC CB E3 3F 8C F2 FC 3F FC 90"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -97, SNR 3.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1928
+Sending 01xxyyzzaabbcc...
+Unexpected or no response
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 E0 CC F0 F7 F7 C1 34 D3 30"
++CMSGHEX: Wait ACK
++CMSGHEX: Done
+
+... failure, resend.
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 E0 CC F0 F7 F7 C1 34 D3 30"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR 2
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1918
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 71 C0 07 07 31 CC F7 F0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -101, SNR -6.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1908
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "13 0F FF 1F F8 F3 FE FC FF 82 C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -101, SNR 1.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1898
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1F 38 CC EF 37 8C C7 FF 03 80"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -103, SNR -2.75
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1888
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1C 37 1C 34 C1 CC 04 0C CD 13 C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR -3.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1878
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "11 33 C1 FC 03 FF 2F F8 F3 B0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR 3.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1868
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 3F 3E 30 8F 23 F3 C2 0F 83 30"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -101, SNR -2.25
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1858
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "17 C4 33 10 C3 C7 0C C7 1C C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -99, SNR 1.75
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1848
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "13 13 3C 1C 0C 0F 4C 4C 07 80"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR 4.25
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1838
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 3F DF CC FF E1 F3 FF 03 0D C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR -3
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1828
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 60 01 DF F1 CF 04 CD 00"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -100, SNR 1
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1818
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "13 0C C7 B3 3E 2C 3F F0 EC 00"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -99, SNR 2
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1808
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 FC 30 87 C7 30 4C 43 70 C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR 4.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1798
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1D 3C 24 CC F0 C3 5C 71 C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -99, SNR 1.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1788
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 CC 4C C3 43 CD 03 F3 CC 30"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -99, SNR 4
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1778
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 E3 8E FB FF C8 CC 34 3C F0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR -4.25
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1768
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 3A FC 34 3F 14 01 03 C4 C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -101, SNR 1.25
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1758
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 FD 37 30 4C 34 33 DF 3F 00"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -99, SNR 3
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1748
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1E 3D F3 CC FB 33 38 3F 8F CB E0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -99, SNR -4
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1738
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 3C C3 1D 0C 31 FD F3 FC D0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -100, SNR 0.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1728
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "11 04 04 0C 73 03 43 31 30"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -100, SNR 1.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1718
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 3C 7C 0C 62 33 CB 3F FF 0C B0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -100, SNR 2.75
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1708
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 F3 B3 D3 3F 03 F8 34 01 00"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR 3.75
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1698
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 1F 70 03 0F 3F 32 83 0C CB 40"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR -3.75
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1688
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1C 34 31 0C 03 1C C7 73 C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR -3.75
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1678
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "10 1C 13 DC 0C 07 3D C3 30"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -104, SNR -2
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1668
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 73 E7 33 C9 F3 02 3F 03 FF 00"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR 1.75
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1658
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 E8 3C E3 0F 0D 1C DF 00"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -99, SNR 2.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1648
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 13 DC 01 CD CC 7C 33 7D C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR 3.25
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1638
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1C 3C 03 D3 43 33 DE 3C C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -97, SNR -2
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1628
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1B E3 33 8F CF CE 0C 2F CC CE F0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -97, SNR 4.25
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1618
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 C4 37 D0 70 31 04 F4 00"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR 4.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1608
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "14 3C 1C C2 8F CC CF 3C 30"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -99, SNR 3.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1598
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "12 1E C8 FF FC EC FF F3 CE 0F 30"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR 3.5
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1588
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "18 3F FD 4C 00 10 0D 04 C3 C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -99, SNR 2
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1578
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 13 37 30 83 0D 3C 03 1C 70"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -100, SNR 2.75
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1568
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "01 F0 F3 8F 82 30 CF C2 70 FF C0"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -97, SNR 4
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1558
+Sending 01xxyyzzaabbcc...
++CMSGHEX: Start LoRaWAN transaction
++CMSGHEX: TX "1C EC 3A 03 0C C4 F4 C3 01 00"
++CMSGHEX: Wait ACK
++CMSGHEX: ACK Received
++CMSGHEX: RXWIN1, RSSI -98, SNR 4
++CMSGHEX: Done
+
+Remaining messageLengthBytes
+1548
+Sending 01xxyyzzaabbcc...
