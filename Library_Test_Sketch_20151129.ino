@@ -34,6 +34,9 @@
 #define idNwSKey "3BD4F443293920FF32DA51BB4D1EE63D"
 #define idAppSKey "FC833EE615ED0C54F06883CEDF44AEAC"
 
+// ADR is a bit slow to switch from DR0 to DR3. Set to DR3 and hope for the best?
+#define maxDR "DR3"
+
 #ifdef DEBUG
 #define DEBUG_PRINT(x)  Serial.println (x)
 #else
@@ -373,17 +376,25 @@ void transmissionEngine(void)
       if ( ! modem.Reset() )
       {
         _sleep(SLEEP_MODE_IDLE, WDTO_1S);
-        if ( ! modem.setPort("1") )
+        if ( ! modem.disableADR() )
         {
-          modemState = READY;
           _sleep(SLEEP_MODE_IDLE, WDTO_1S);
+          if ( ! modem.setDR(maxDR) )
+          {
+            _sleep(SLEEP_MODE_IDLE, WDTO_1S);
+            if ( ! modem.setPort("1") )
+            {
+              modemState = READY;
+              _sleep(SLEEP_MODE_IDLE, WDTO_1S);
 
-          modem.checkAT();
-          _sleep(SLEEP_MODE_IDLE, WDTO_1S);
+              modem.checkAT();
+              _sleep(SLEEP_MODE_IDLE, WDTO_1S);
 
-          //  modem.setID(idDevAddr, idDevEui);
-          //  _sleep(SLEEP_MODE_IDLE, WDTO_1S);
-          //  modem.setKeys(idNwSKey, idAppSKey);
+              //  modem.setID(idDevAddr, idDevEui);
+              //  _sleep(SLEEP_MODE_IDLE, WDTO_1S);
+              //  modem.setKeys(idNwSKey, idAppSKey);
+            }  
+          }
         }
       }
       break;
@@ -397,7 +408,7 @@ void transmissionEngine(void)
 
     case PREAMBLE: // prepare the preamble commands
       DEBUG_PRINT("modemState PREAMBLE");
-
+      
       switch (modem.getDR()) {
         case 0:
           packetPayloadSize = DR0;//11

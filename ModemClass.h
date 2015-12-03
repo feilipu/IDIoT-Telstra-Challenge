@@ -58,6 +58,8 @@ class LoRaModem
     int checkAT();
     int checkID();
     int getDR();
+    int disableADR();
+    int setDR(String DR);
     int setID(String addr, String dev);
     int setKeys(String NWKey, String AppKey);
     int setPort(String portNum);
