@@ -41,7 +41,7 @@ void LoRaModem::_sendSerial(String message)
    Generic private method for reading back from the modem, and qualifying the response against a Regex
 */
 
-int LoRaModem::_checkresponse(const char* checkVal, int call_timeout = rx_timeout)
+int LoRaModem::_checkresponse(const char* checkVal, int call_timeout = rx_timeout, int _trim = 0)
 {
   modemResp[0] = 0;
 
@@ -51,6 +51,12 @@ int LoRaModem::_checkresponse(const char* checkVal, int call_timeout = rx_timeou
 
   while (i < rx_buffer - 1)
   {
+
+    if (_trim == 1)
+    {
+      // _LoRaSerial.find("Wait"); // toss the verbosity.
+    }
+
     int rxcount = _LoRaSerial.readBytes(&modemResp[i], rx_buffer - i);
     i += rxcount;
     modemResp[i] = 0;
@@ -67,7 +73,7 @@ int LoRaModem::_checkresponse(const char* checkVal, int call_timeout = rx_timeou
       }
       else
       {
-        DEBUG_PRINT("Unexpected response");
+        DEBUG_PRINT(F("Unexpected or no response"));
         DEBUG_PRINT(modemResp);
         return 1;
       }
@@ -118,7 +124,7 @@ int LoRaModem::getDR() {
   }
   _rspMs.GetCapture (_DR, 0);
 
-  return int(_DR[0]);
+  return _DR[0];
 };
 
 
@@ -246,21 +252,14 @@ int LoRaModem::cMsgHEX(String message) {
 */
 int LoRaModem::cMsgBytes(uint8_t * bytes, int16_t length) {
 
-  char buf[4];
-
   _LoRaSerial.read();
-  _LoRaSerial.write("AT+CMSGHEX=\"");
+  _LoRaSerial.print("AT+CMSGHEX=\"");
 
-  while (length--) {
-    itoa(*bytes++, buf, 16);
-<<<<<<< HEAD
-    _LoRaSerial.write( buf, 2 ); // no space required. tested.
-=======
-    _LoRaSerial.write( buf, 2 );
->>>>>>> 273a02a6bc423a0ba7273f45aaead0e6660fd051
-  }
+  do {
+    _LoRaSerial.print(*bytes++, HEX);
+  } while (length--);
 
-  _LoRaSerial.write("\"\r\n");
+  _LoRaSerial.println("\"");
 
   if (_checkresponse(".+ACK Received.+CMSGHEX: Done"))
   {
@@ -271,9 +270,9 @@ int LoRaModem::cMsgBytes(uint8_t * bytes, int16_t length) {
 };
 
 int LoRaModem::lowPower() {
-   _sendSerial("AT+LOWPOWER");
+  _sendSerial("AT+LOWPOWER");
 
-  if (_checkresponse(".+LOWPOWER: OK.+"))
+  if (_checkresponse(".+LOWPOWER: SLEEP.+", rx_timeout_fast))
   {
     return 1;
   }
@@ -312,7 +311,7 @@ String LoRaModem::getAscii() {
   }
   else
   {
-    DEBUG_PRINT("No ASCII payload...");
+    DEBUG_PRINT(F("No ASCII payload..."));
     return "";
   }
 };

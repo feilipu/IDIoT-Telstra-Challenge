@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <avr/io.h>
@@ -35,7 +36,7 @@
 #define idAppSKey "FC833EE615ED0C54F06883CEDF44AEAC"
 
 // ADR is a bit slow to switch from DR0 to DR3. Set to DR3 and hope for the best?
-#define maxDR "DR3"
+#define maxDR "DR0"
 
 #ifdef DEBUG
 #define DEBUG_PRINT(x)  Serial.println (x)
@@ -164,7 +165,7 @@ void loop()
   switch (deviceState)
   {
     case INITIALISE:
-      DEBUG_PRINT("deviceState INITIALISE");
+      DEBUG_PRINT(F("deviceState INITIALISE"));
 
       _powerDown();
 
@@ -180,7 +181,7 @@ void loop()
       break;
 
     case SAMPLE:
-      DEBUG_PRINT("deviceState SAMPLE");
+      DEBUG_PRINT(F("deviceState SAMPLE"));
 
       samplingEngine();
 
@@ -195,7 +196,7 @@ void loop()
       break;
 
     case TRANSMIT:
-      DEBUG_PRINT("deviceState TRANSMIT");
+      DEBUG_PRINT(F("deviceState TRANSMIT"));
 
       transmissionEngine();
 
@@ -206,15 +207,18 @@ void loop()
       break;
 
     case SLEEP:
-
-      DEBUG_PRINT("deviceState SLEEP");
+      DEBUG_PRINT(F("deviceState SLEEP"));
 
       modem.lowPower();
 
       Serial.flush(); // empty the serial transmission buffer before we sleep.
 
-      _sleep( SLEEP_MODE_EXT_STANDBY, WDTO_8S );
+      _sleep( SLEEP_MODE_IDLE, WDTO_8S );
+
+      modem.checkAT();
       delay(50);
+
+      modem.checkAT();
 
       deviceState = SAMPLE; // woken up from a global sleep, so start sampling
       inputState = PREPARATION;
@@ -260,7 +264,7 @@ void samplingEngine(void)
   switch (inputState)
   {
     case SETUP:
-      DEBUG_PRINT("inputState SETUP");
+      DEBUG_PRINT(F("inputState SETUP"));
 
       AudioCodec_ADC_init();
       AudioCodec_Timer2_init( SAMPLE_RATE );
@@ -276,7 +280,7 @@ void samplingEngine(void)
       break;
 
     case PREPARATION:
-      DEBUG_PRINT("inputState PREPARATION");
+      DEBUG_PRINT(F("inputState PREPARATION"));
 
       eefs_ringBuffer_Flush( &acquisitionBufferXRAM );
 
@@ -285,7 +289,7 @@ void samplingEngine(void)
       break;
 
     case SAMPLING:
-      DEBUG_PRINT("inputState SAMPLING");
+      DEBUG_PRINT(F("inputState SAMPLING"));
 
       // AUDIO SAMPLING
 
@@ -340,7 +344,7 @@ void samplingEngine(void)
       break;
 
     case PROCESSED:
-      DEBUG_PRINT("inputState PROCESSED");
+      DEBUG_PRINT(F("inputState PROCESSED"));
 
       // Success!
       // We wait here until the main logic asks us to sample again.
@@ -364,10 +368,12 @@ void transmissionEngine(void)
   String Command; // Final command to the modem
   uint16_t messageLengthBytes;
 
+  uint8_t ack;
+
   switch (modemState)
   {
     case NOTREADY:
-      DEBUG_PRINT("modemState NOTREADY");
+      DEBUG_PRINT(F("modemState NOTREADY"));
 
       if ( ! modem.Reset() )
       {
@@ -389,104 +395,110 @@ void transmissionEngine(void)
               //  modem.setID(idDevAddr, idDevEui);
               //  _sleep(SLEEP_MODE_IDLE, WDTO_1S);
               //  modem.setKeys(idNwSKey, idAppSKey);
-            }  
+            }
           }
         }
       }
       break;
 
     case READY: // ready to transmit, but if there is nothing to transmit then break;
-      DEBUG_PRINT("modemState READY");
+      DEBUG_PRINT(F("modemState READY"));
 
       if (inputState == PROCESSED)
         modemState = PREAMBLE;
       break;
 
     case PREAMBLE: // prepare the preamble commands
-      DEBUG_PRINT("modemState PREAMBLE");
-      
+      DEBUG_PRINT(F("modemState PREAMBLE"));
+
       switch (modem.getDR()) {
-        case 0:
+        case '0':
           packetPayloadSize = DR0;//11
           break;
-        case 1:
+        case '1':
           packetPayloadSize = DR1;//53
           break;
-        case 2:
+        case '2':
           packetPayloadSize = DR2;//129
           break;
-        case 3:
+        case '3':
           packetPayloadSize = DR3;//250
           break;
         default:
           packetPayloadSize = DR0;//11
       }
+      DEBUG_PRINT(packetPayloadSize);
 
-      Command = "108,";
-      Command = Command + maximumSampleDelta;
+      Command = "108";
+      Command = Command + ',' + maximumSampleDelta;
 
-      while ( modem.cMsg( Command ) )
-        ;
+      if ( modem.cMsg( Command ) )
+        DEBUG_PRINT(F("108, Failure"));
 
       modemState = PAYLOAD;
       break;
 
     case PAYLOAD: // transmit the payload bytes
-      DEBUG_PRINT("modemState PAYLOAD");
+      DEBUG_PRINT(F("modemState PAYLOAD"));
 
-      Command = "DE AD BE EF CA FE F0 0D 00 BA BE";
-      modem.cMsgHEX( Command );
+      //     Command = "DEADBEEFCAFEF00D00BABE";
+      //     if ( modem.cMsgHEX( Command ) )
+      //        DEBUG_PRINT(F("Test HEX Failure"));
 
       struct {
         uint8_t messageType;
-        uint16_t messageIndex;
-        uint8_t bytes[DR3];
+        uint8_t bytes[DR2]; // xxx WARNING This is a limit !!!
       } payloadStructure;
 
-      payloadStructure.messageIndex = 0xFFFF;
       messageLengthBytes =  eefs_ringBuffer_GetCount( &acquisitionBufferXRAM );
 
-      Command = "101,";
-      Command = Command + payloadStructure.messageIndex  + ',' + messageLengthBytes;
-      // send an audio stream begin command with "101", Index 0xFFFF, and the number of bytes we expect to send.
+      Command = "101";
+      Command = Command + ',' + messageLengthBytes;
+      // send an audio stream begin command with "101", and the number of bytes we expect to send.
 
       DEBUG_PRINT( Command );
 
-      while ( modem.cMsg( Command ) )
-        ;
+      if ( modem.cMsg( Command ) )
+        DEBUG_PRINT(F("101, Failure"));
 
       payloadStructure.messageType = 1;
-      payloadStructure.messageIndex = 0x0000;
 
       do {
 
-        for (uint8_t i = 0; i < (uint8_t)(packetPayloadSize - sizeof(payloadStructure.messageType) - sizeof(payloadStructure.messageIndex)); ++i)
+        for (uint8_t i = 0; i < (uint8_t)(packetPayloadSize - 1 ); ++i)
         {
-          payloadStructure.bytes[i] = eefs_ringBuffer_Pop( &acquisitionBufferXRAM );
-          --messageLengthBytes;
+          if (messageLengthBytes > 0 )
+          {
+            payloadStructure.bytes[i] = eefs_ringBuffer_Pop( &acquisitionBufferXRAM );
+            --messageLengthBytes;
+          }
         }
 
-        uint8_t ack;
+        DEBUG_PRINT(F("Remaining messageLengthBytes"));
+        DEBUG_PRINT(messageLengthBytes);
+
         do {
-          ack = modem.cMsgBytes( (uint8_t *)&payloadStructure, (uint16_t)packetPayloadSize );
+          DEBUG_PRINT(F("Sending 01xxyyzzaabbcc..."));
+          if ( (ack = modem.cMsgBytes( (uint8_t *)&payloadStructure, (uint16_t)packetPayloadSize )) == 1)
+            DEBUG_PRINT(F("... failure, resend."));
         } while ( ack == 1);
 
-      } while ( messageLengthBytes > 0  &&  ++payloadStructure.messageIndex < 0xFFFF );
+      } while ( messageLengthBytes > 0 );
 
-      Command = "102,";
-      Command = Command + payloadStructure.messageIndex;
-      // Send an audio stream end command "102" with the total messages transmitted.
+      Command = "102";
+      Command = Command + 0xFFFF;
+      // End an audio stream  with End command "102" with 0xFFFF.
 
       DEBUG_PRINT( Command);
 
-      while ( modem.cMsg( Command ) == 1)
-        DEBUG_PRINT("Failure");
+      if ( modem.cMsg( Command ) )
+        DEBUG_PRINT(F("102, Failure"));
 
       modemState = RESPONSE;
       break;
 
     case RESPONSE: // handle responses from the network side
-      DEBUG_PRINT("modemState RESPONSE");
+      DEBUG_PRINT(F("modemState RESPONSE"));
 
       modemState = READY;
       break;
@@ -566,8 +578,9 @@ void _sleep (uint8_t sleepMode, uint8_t WDTValue)
 /*-----------------------------------------------------------*/
 // Globals
 
-#define ADC_NULL_OFFSET 0x3e00 // USB Powered
-//#define ADC_NULL_OFFSET 0x3e00 // Battery Powered
+//Will need to adjust the offset of 1.25V/Vcc = "Mic Amp Offset"/"Operating Voltage" once it is running off battery.
+#define ADC_NULL_OFFSET 0x3e00 // USB Powered 5.0V Vcc.
+//#define ADC_NULL_OFFSET 0x4e00 // Battery Powered 4.1V Vcc.
 
 /*-----------------------------------------------------------*/
 
@@ -584,7 +597,7 @@ ISR(TIMER2_COMPA_vect) // This interrupt for generating Audio samples. Should be
 
     AudioCodec_ADC( &mod0Value.u16 );
 
-    mod0Value.i16 = mod0Value.u16 - ADC_NULL_OFFSET; // This is offset using 5V supply. Will need to read adjust once it is running off battery.
+    mod0Value.i16 = mod0Value.u16 - ADC_NULL_OFFSET; // This is offset based on the operating voltage.
 
     IIRFilter( &txFilter, &mod0Value.i16);  // filter the sample train prior to companding, with corner frequency set to 3/8 of sample rate.
 

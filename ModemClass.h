@@ -20,8 +20,8 @@
 #define DEBUG
 
 #define rx_timeout 8000
-#define rx_timeout_fast 1000
-#define rx_buffer 128
+#define rx_timeout_fast 2000
+#define rx_buffer 192
 
 #ifdef DEBUG
 #define DEBUG_PRINT(x)  Serial.println (x)
@@ -81,7 +81,7 @@ class LoRaModem
   private:
     MatchState _rspMs;
     void _sendSerial(String message);
-    int _checkresponse(const char* checkVal, int call_timeout);
+    int _checkresponse(const char* checkVal, int call_timeout, int _trim);
     char _DR[1];
 };
 
