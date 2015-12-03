@@ -49,7 +49,6 @@
 typedef enum {
   INITIALISE,
   SAMPLE,
-  LOGIC,
   TRANSMIT,
   SLEEP
 } globalState_t;
@@ -192,9 +191,6 @@ void loop()
       }
       break;
 
-    case LOGIC:
-      break;
-
     case TRANSMIT:
       DEBUG_PRINT("deviceState TRANSMIT");
 
@@ -215,7 +211,7 @@ void loop()
       Serial.flush(); // empty the serial transmission buffer before we sleep.
 
       _sleep( SLEEP_MODE_EXT_STANDBY, WDTO_8S );
-      _sleep( SLEEP_MODE_IDLE, WDTO_60MS );
+      delay(50);
 
       deviceState = SAMPLE; // woken up from a global sleep, so start sampling
       inputState = PREPARATION;
@@ -232,7 +228,7 @@ void loop()
 #define FRAM_START_ADDR     RAM0_ADDR
 #define FRAM_SIZE           8192
 
-#define NOISE_TRIGGER       500
+#define NOISE_TRIGGER       1000
 
 ADC_value_t mod0Value; // address of individual audio sample
 
@@ -294,7 +290,7 @@ void samplingEngine(void)
 
       while ( ! eefs_ringBuffer_IsFull( &acquisitionBufferXRAM ) )
       {
-        _delay_ms(50);
+        _delay_ms(100);
       }
 
       AudioCodec_Timer2_disable(); // turn on the timer 2 to enable acquisition of audio
@@ -418,9 +414,8 @@ void transmissionEngine(void)
       Command = "108,";
       Command = Command + maximumSampleDelta;
 
-
-      while ( modem.cMsg( Command ) != 1)
-        DEBUG_PRINT("Failure");
+      while ( modem.cMsg( Command ) )
+        ;
 
       modemState = PAYLOAD;
       break;
@@ -428,9 +423,8 @@ void transmissionEngine(void)
     case PAYLOAD: // transmit the payload bytes
       DEBUG_PRINT("modemState PAYLOAD");
 
-
-      //      Command = "DE AD BE EF CA FE F0 0D 00 BA BE";
-      //      modem.cMsgHEX( Command );
+      Command = "DE AD BE EF CA FE F0 0D 00 BA BE";
+      modem.cMsgHEX( Command );
 
       struct {
         uint8_t messageType;
@@ -447,8 +441,8 @@ void transmissionEngine(void)
 
       DEBUG_PRINT( Command );
 
-      while ( modem.cMsg( Command ) != 1)
-        DEBUG_PRINT("Failure");
+      while ( modem.cMsg( Command ) )
+        ;
 
       payloadStructure.messageType = 1;
       payloadStructure.messageIndex = 0x0000;
@@ -464,7 +458,7 @@ void transmissionEngine(void)
         uint8_t ack;
         do {
           ack = modem.cMsgBytes( (uint8_t *)&payloadStructure, (uint16_t)packetPayloadSize );
-        } while ( ack != 1);
+        } while ( ack == 1);
 
       } while ( messageLengthBytes > 0  &&  ++payloadStructure.messageIndex < 0xFFFF );
 
@@ -474,7 +468,7 @@ void transmissionEngine(void)
 
       DEBUG_PRINT( Command);
 
-      while ( modem.cMsg( Command ) != 1)
+      while ( modem.cMsg( Command ) == 1)
         DEBUG_PRINT("Failure");
 
       modemState = RESPONSE;

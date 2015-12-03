@@ -67,7 +67,7 @@ int LoRaModem::_checkresponse(const char* checkVal, int call_timeout = rx_timeou
       }
       else
       {
-        DEBUG_PRINT("Unexpected response / no response");
+        DEBUG_PRINT("Unexpected response");
         DEBUG_PRINT(modemResp);
         return 1;
       }
@@ -230,8 +230,7 @@ int LoRaModem::cMsgBytes(uint8_t * bytes, int16_t length) {
 
   while (length--) {
     itoa(*bytes++, buf, 16);
-    _LoRaSerial.write( buf, 2 );
-    _LoRaSerial.write(' ');
+    _LoRaSerial.write( buf, 2 ); // no space required. tested.
   }
 
   _LoRaSerial.write("\"\r\n");
