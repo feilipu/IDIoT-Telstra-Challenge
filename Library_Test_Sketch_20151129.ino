@@ -36,16 +36,13 @@
 #define idAppSKey "FC833EE615ED0C54F06883CEDF44AEAC"
 
 // ADR is a bit slow to switch from DR0 to DR3. Set to DR3 and hope for the best?
-#define maxDR "DR0"
+#define maxDR "DR3"
 
 #ifdef DEBUG
 #define DEBUG_PRINT(x)  Serial.println (x)
 #else
 #define DEBUG_PRINT(x)
 #endif
-
-#define TRUE 1
-#define FALSE 0
 
 /*-----------------------------------------------------------*/
 // Type Definitions
@@ -78,10 +75,11 @@ typedef enum {
 } operateMode_t; // operational mode for low power or active powered.
 
 typedef enum {
-  DR0 = 11,
-  DR1 = 53,
-  DR2 = 129,
-  DR3 = 250
+
+  DR0 = 11,   // DR0 = 11,
+  DR1 = 11,   // DR1 = 53,
+  DR2 = 11,  // DR2 = 129,
+  DR3 = 11   // DR3 = 250
 } packetPayload_t; // network packet size based on rate
 
 /*-----------------------------------------------------------*/
@@ -140,8 +138,6 @@ operateMode_t mode; // mode of operation, low power passive, or active
 
 LoRaModem modem; // instantiating a modem.
 
-uint8_t noiseEvent;
-
 /*-----------------------------------------------------------*/
 
 void setup() {
@@ -185,14 +181,11 @@ void loop()
 
       samplingEngine();
 
-      if ( modemState == READY && inputState == PROCESSED && noiseEvent == TRUE )
+      if ( modemState == READY && inputState == PROCESSED )
       {
         deviceState = TRANSMIT;
       }
-      else if ( inputState == PROCESSED && noiseEvent == FALSE )
-      {
-        deviceState = SLEEP;
-      }
+
       break;
 
     case TRANSMIT:
@@ -235,7 +228,7 @@ void loop()
 #define FRAM_START_ADDR     RAM0_ADDR
 #define FRAM_SIZE           8192
 
-#define NOISE_TRIGGER       1000
+#define NOISE_TRIGGER       10000
 
 ADC_value_t mod0Value; // address of individual audio sample
 
@@ -245,7 +238,12 @@ g726_state g726State;  // state for the g.726 encoder, maintaining predictors et
 
 eefs_ringBuffer_t acquisitionBufferXRAM; // where we store the samples from acquisition, G.711 companded or G.726 compressed.
 
-uint16_t maximumSampleDelta;
+int32_t maximumSampleDelta;
+
+enum {
+  FALSE = 0,
+  TRUE = 1
+} noiseEvent;
 
 /*-----------------------------------------------------------*/
 
@@ -335,10 +333,15 @@ void samplingEngine(void)
         // At the end we should have only 1/4 the g.711 (or 1/8 the PCM) bytes, so messageLengthBytes should reflect that the XRAM buffer is 1/4 full.
       }
 
-      maximumSampleDelta = maximumSample - minimumSample; // This is the maximum for this sampling second.
+      maximumSampleDelta = abs(maximumSample) + abs( minimumSample); // This is the maximum for this sampling second.
+      DEBUG_PRINT(maximumSampleDelta);
 
-      if ( maximumSampleDelta - NOISE_TRIGGER > 0 )
+
+      if ( (maximumSampleDelta - NOISE_TRIGGER) > 0 ) {
         noiseEvent = TRUE;
+      } else {
+        noiseEvent = FALSE;
+      }
 
       inputState = PROCESSED;
       break;
@@ -347,7 +350,7 @@ void samplingEngine(void)
       DEBUG_PRINT(F("inputState PROCESSED"));
 
       // Success!
-      // We wait here until the main logic asks us to sample again.
+      // We wait here until the deviceState logic asks us to sample again.
 
       break;
 
@@ -432,10 +435,17 @@ void transmissionEngine(void)
       Command = "108";
       Command = Command + ',' + maximumSampleDelta;
 
-      if ( modem.cMsg( Command ) )
-        DEBUG_PRINT(F("108, Failure"));
+      do {
+        if ( (ack = modem.cMsg( Command )) == 1)
+          DEBUG_PRINT(F("108, failure, resend."));
+      } while ( ack == 1);
 
-      modemState = PAYLOAD;
+      if ( noiseEvent == TRUE ) {
+        modemState = PAYLOAD;
+      } else {
+        modemState = RESPONSE;
+      }
+
       break;
 
     case PAYLOAD: // transmit the payload bytes
@@ -447,7 +457,7 @@ void transmissionEngine(void)
 
       struct {
         uint8_t messageType;
-        uint8_t bytes[DR2]; // xxx WARNING This is a limit !!!
+        uint8_t bytes[DR1]; // xxx WARNING This is a memory limit !!!
       } payloadStructure;
 
       messageLengthBytes =  eefs_ringBuffer_GetCount( &acquisitionBufferXRAM );
@@ -458,8 +468,11 @@ void transmissionEngine(void)
 
       DEBUG_PRINT( Command );
 
-      if ( modem.cMsg( Command ) )
-        DEBUG_PRINT(F("101, Failure"));
+
+      do {
+        if ( (ack = modem.cMsg( Command )) == 1)
+          DEBUG_PRINT(F("101, failure, resend."));
+      } while ( ack == 1);
 
       payloadStructure.messageType = 1;
 
@@ -486,13 +499,15 @@ void transmissionEngine(void)
       } while ( messageLengthBytes > 0 );
 
       Command = "102";
-      Command = Command + 0xFFFF;
+      Command = Command + ',' + 0xFFFF;
       // End an audio stream  with End command "102" with 0xFFFF.
 
       DEBUG_PRINT( Command);
 
-      if ( modem.cMsg( Command ) )
-        DEBUG_PRINT(F("102, Failure"));
+      do {
+        if ( (ack = modem.cMsg( Command )) == 1)
+          DEBUG_PRINT(F("102, failure, resend."));
+      } while ( ack == 1);
 
       modemState = RESPONSE;
       break;

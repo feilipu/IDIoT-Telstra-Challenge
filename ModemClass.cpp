@@ -4,6 +4,7 @@
 */
 
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include <Arduino.h>
 
@@ -256,8 +257,8 @@ int LoRaModem::cMsgBytes(uint8_t * bytes, int16_t length) {
   _LoRaSerial.print("AT+CMSGHEX=\"");
 
   do {
-    _LoRaSerial.print(*bytes++, HEX);
-  } while (length--);
+    prnt("%02x", *bytes++);
+  } while (--length);
 
   _LoRaSerial.println("\"");
 
@@ -315,4 +316,13 @@ String LoRaModem::getAscii() {
     return "";
   }
 };
+
+void LoRaModem::prnt(char * fmt, ... ) {
+        char buf[8]; // resulting string limited to 7 chars
+        va_list args;
+        va_start (args, fmt );
+        vsnprintf(buf, 8, fmt, args);
+        va_end (args);
+        _LoRaSerial.print(buf);
+}
 

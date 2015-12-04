@@ -5,6 +5,9 @@
 #ifndef _MODEMCLASS_H
 #define _MODEMCLASS_H
 
+#include <stdlib.h>
+#include <stdarg.h>
+
 #include <Arduino.h>
 
 #include "SoftwareSerial.h"
@@ -82,6 +85,7 @@ class LoRaModem
     MatchState _rspMs;
     void _sendSerial(String message);
     int _checkresponse(const char* checkVal, int call_timeout, int _trim);
+    void prnt(char *fmt, ... );
     char _DR[1];
 };
 
